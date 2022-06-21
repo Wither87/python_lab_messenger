@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from deps import get_db, get_current_user
 from schemas.message import Message
 from crud import message_db, chat_db, user_chat_db
+from broker.redis import redis
 
 router = APIRouter(
     prefix="/message",
@@ -29,11 +30,13 @@ def get_message(message_id: int, user_id=Depends(get_current_user), db=Depends(g
 
 
 @router.post("/")
-def create_message(message: Message, chat_id: int, user_id=Depends(get_current_user), db=Depends(get_db)):
+async def create_message(message: Message, chat_id: int, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Отправка сообщения в чат """
     _user_chat=get_user_chat(chat_id=chat_id, user_id=user_id, db=db)
     if _user_chat is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Вас нет в этом чате")
+
+    await redis.publish(f"user-{user_id}", message.text)
 
     _message = message_db.create_message(session=db, user_id=user_id, chat_id=chat_id, message=message)
     return _message

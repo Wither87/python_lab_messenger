@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse
 
 from crud.user_db import authenticate
 from deps import get_db
@@ -10,7 +11,6 @@ router = APIRouter(
     prefix="/login",
     tags=["login"]
 )
-
 
 @router.post("/")
 async def login_for_access_token(

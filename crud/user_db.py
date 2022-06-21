@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database.models import User as UserDB
 from schemas.user import User
 from security import get_password_hash, verify_password
+from broker.redis import redis
 
 
 
@@ -49,9 +50,12 @@ def delete_user_by_id(session: Session, id: int):
 
 
 def authenticate(db: Session, login: str, password: str):
-    user = get_user_by_login(db, login)
-    if not user:
+    _user = get_user_by_login(db, login)
+    if not _user:
         return False
-    if not verify_password(password, user.password):
+    if not verify_password(password, _user.password):
         return False
-    return user
+
+    pubsub = redis.pubsub()
+    pubsub.subscribe(f"user-{_user.id}")
+    return _user

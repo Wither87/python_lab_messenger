@@ -1,6 +1,8 @@
-from fastapi import APIRouter
-from schemas.user import User, UserInDB
-from crud.user import user_database
+from fastapi import APIRouter, Depends, HTTPException, status
+from deps import get_db, get_current_user
+from schemas.user import User, UserCreate, UserInDB
+from crud import user_db
+
 
 router = APIRouter(
     prefix="/user",
@@ -8,34 +10,31 @@ router = APIRouter(
 )
 
 
-@router.get("/{user_id}")
-async def get_user(user_id: int):
+@router.get("/", response_model=User)
+async def get_user(user_id=Depends(get_current_user), db=Depends(get_db)):
+    """ Получить пользователя по id """
+    _user = user_db.get_user_by_id(session=db, id=user_id)
+    if _user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return _user
 
-    """ Получить пользователя по заданному user_id """
-    return user_database[user_id - 1]
 
-
-@router.post("/", response_model=UserInDB)
-async def create_user(user: User):
+@router.post("/")
+async def create_user(user: UserCreate, db=Depends(get_db)):
     """ Создать пользователя """
-    user_db = UserInDB(id=len(user_database) + 1, **user.dict())
-    return user_db
+    _user = user_db.create_user(session=db, user=user)
+    return _user
 
 
-@router.put("/", response_model=UserInDB)
-async def update_user(user_id: int, user: User):
-    """ Обновить пользователя """
-    user_db = user_database[user_id - 1]
-    for param, value in user.dict().items():
-        user_db[param] = value
-
-    # Здесь изменения сохраняются в базу
-    return user_db
+@router.put("/")
+async def update_user(user: User, user_id=Depends(get_current_user), db=Depends(get_db)):
+    """ Обновить пользователя по id"""
+    _user = user_db.update_user_by_id(session=db, id=user_id, user=user)
+    return _user
 
 
-@router.delete("/{user_id}")
-def delete_user(user_id: int):
-    """ Удалить пользователя по заданному user_id """
-    db = list(user_database)
-    del db[user_id]
-    return db
+@router.delete("/")
+async def delete_user(user_id=Depends(get_current_user), db=Depends(get_db)):
+    """ Удалить пользователя по id """
+    _user = user_db.delete_user_by_id(session=db, id=user_id)
+    return _user

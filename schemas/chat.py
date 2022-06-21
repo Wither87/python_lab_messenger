@@ -1,8 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
-from typing import List
-from schemas.user import User, UserInDB
 
 
 class ChatType(str, Enum):
@@ -16,11 +14,5 @@ class Chat(BaseModel):
     created_date: datetime
     type: ChatType
 
-
-class ChatInDB(Chat):
-    id: int
-
-
-class ChatWithUsers(BaseModel):
-    chat: Chat
-    users: List[UserInDB]
+    class Cinfig:
+        orm_mode = True

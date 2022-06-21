@@ -1,0 +1,7 @@
+create user messenger with superuser password '1234567';
+
+create database MessengerPy;
+
+drop table "Messages"; 
+drop table "Users"; 
+drop table "Chats";

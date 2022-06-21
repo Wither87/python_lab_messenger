@@ -1,10 +1,7 @@
-from xml.dom.pulldom import CHARACTERS
-from fastapi import APIRouter
-from crud.chat import chat_database, user_chat_database
-from schemas.chat import Chat, ChatInDB, ChatWithUsers
-from schemas.user import User
-from crud.user import user_database
-from crud.message import message_database
+from fastapi import APIRouter, Depends
+from deps import get_db, get_current_user
+from schemas.chat import Chat
+from crud import chat_db, message_db
 
 router = APIRouter(
     prefix="/chat",
@@ -12,77 +9,48 @@ router = APIRouter(
 )
 
 
-@router.get("/{chat_id}", response_model=ChatWithUsers)
-async def get_chat(chat_id: int):
+@router.get("/{chat_id}")
+async def get_chat(chat_id: int, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Получить чат по заданному chat_id """
-    chat = chat_database[chat_id-1]
-    users_in_chat = []
-    for user_chat in user_chat_database:
-        if user_chat["chat_id"] == chat_id:
-            for user in user_database:
-                if user["id"] == user_chat["user_id"]:
-                    users_in_chat.append(user)
-
-    return ChatWithUsers(chat=chat, users=users_in_chat)
+    chat = chat_db.get_chat_by_id(session=db, id=chat_id)
+    return chat
 
 
-@router.post("/", response_model=ChatInDB)
-async def create_chat(chat: Chat):
+@router.post("/")
+async def create_chat(chat: Chat, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Создать чат """
-    chat_db = ChatInDB(id=len(chat_database) + 1, **chat.dict())
-    return chat_db
+    _chat = chat_db.create_chat(session=db, chat=chat)
+    return _chat
 
 
-@router.put("/", response_model=ChatInDB)
-async def update_chat(chat_id: int, chat: Chat):
+@router.put("/")
+async def update_chat(chat_id: int, chat: Chat, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Обновить чат """
-    chat_db = chat_database[chat_id-1]
-    for param, value in chat.dict().items():
-        chat_db[param] = value
-
-    # Здесь изменения сохраняются в базу
-    return chat_db
+    _chat = chat_db.update_chat_by_id(session=db, id=chat_id, chat=chat)
+    return _chat
 
 
 @router.delete("/{chat_id}")
-async def delete_chat(chat_id: int):
+async def delete_chat(chat_id: int, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Удалить чат по заданному chat_id """
-    db = list(chat_database)
-    del db[chat_id]
-    return db
+    _chat = chat_db.delete_chat_by_id(chat_id)
+    return _chat
 
 
 @router.get("/last/{chat_id}")
-async def get_last_messages_in_chat(chat_id: int, quantity: int = 10):
+async def get_last_messages_in_chat(chat_id: int, quantity: int = 10, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Получить список последних сообщений в чате """
-    # Получаю список сообщений в чате
-    chat_messages = []
-    for message in message_database:
-        if message["chat_id"] == chat_id:
-            chat_messages.append(message)
-    # сортировка сообщений по дате отправки, в начале новые
-    chat_messages = sorted(chat_messages, key=lambda dict: dict["send_date"], reverse=True)
-
-    if quantity > len(chat_messages):
-        quantity = len(chat_messages)
-    return chat_messages[0:quantity]
+    _chat = chat_db.get_chat_by_id(chat_id)
+    _messages = []
+    for _message in message_db.get_messages_by_chat_id(session=db, chat_id=chat_id, quantity=quantity):
+        _messages.append(_message)
+    return (_chat, _messages)
 
 
 @router.get("/activity/{chat_id}")
-async def get_last_messages_in_chat(quantity: int = 10):
+async def get_last_activity_in_chat(quantity: int = 10, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Получить список чатов с последней активностью """
-    
-    messages_db = list(message_database)
-    messages_db = sorted(messages_db, key = lambda dict: dict["send_date"], reverse=True)
-    chat_ids = []
-    for chat in messages_db:
-        if chat["chat_id"] not in chat_ids:
-            chat_ids.append(chat["chat_id"])
-    
-    chats = []
-    for i in chat_ids:
-        chats.append(await get_chat(i))
-
-    if quantity > len(chat_database):
-        quantity = len(chat_database)
-    return chats[0:quantity]
+    _chats = []
+    for _chat in chat_db.get_chat_list_with_last_activity(session=db, quantity=quantity):
+        _chats.append(_chat)
+    return _chats

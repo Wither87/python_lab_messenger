@@ -4,7 +4,8 @@ from pydantic import BaseModel
 class User(BaseModel):
     login: str
     name: str
-    class Cinfig:
+    
+    class Config:
         orm_mode = True
 
 

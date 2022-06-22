@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from fastapi import APIRouter, Depends
 from deps import get_db, get_current_user
-from schemas.message import Message
+from schemas.message import Message, MessageInDB
 from crud import message_db, chat_db, user_chat_db
 from broker.redis import redis
 
@@ -17,7 +17,7 @@ def get_user_chat(chat_id:int, user_id:int, db):
     return _user_chat
 
 
-@router.get("/{message_id}")
+@router.get("/{message_id}", response_model=MessageInDB)
 def get_message(message_id: int, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Получить сообщение по message_id """
     _message = message_db.get_message_by_id(session=db, id=message_id)
@@ -29,7 +29,7 @@ def get_message(message_id: int, user_id=Depends(get_current_user), db=Depends(g
     return _message
 
 
-@router.post("/")
+@router.post("/", response_model=MessageInDB)
 async def create_message(message: Message, chat_id: int, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Отправка сообщения в чат """
     _user_chat=get_user_chat(chat_id=chat_id, user_id=user_id, db=db)
@@ -42,7 +42,7 @@ async def create_message(message: Message, chat_id: int, user_id=Depends(get_cur
     return _message
 
 
-@router.put("/")
+@router.put("/", response_model=MessageInDB)
 def update_message(message_id: int, message: Message, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Изменение сообщения """
     _message = message_db.get_message_by_id(session=db, id=message_id)
@@ -58,7 +58,7 @@ def update_message(message_id: int, message: Message, user_id=Depends(get_curren
     return _message
 
 
-@router.delete("/{message_id}")
+@router.delete("/{message_id}", response_model=MessageInDB)
 def delete_message(message_id: int, user_id=Depends(get_current_user), db=Depends(get_db)):
     """ Удалить сообщение по заданному message_id """
     _message = message_db.get_message_by_id(session=db, id=message_id)

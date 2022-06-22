@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
-import json
 
 
 class MessageType(str, Enum):
@@ -15,5 +14,9 @@ class Message(BaseModel):
     media: str
     send_date: datetime
 
-    class Cinfig:
+    class Config:
         orm_mode = True
+
+
+class MessageInDB(Message):
+    id: int

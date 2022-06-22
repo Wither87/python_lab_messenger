@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
 
+from schemas.message import MessageInDB
+
 
 class ChatType(str, Enum):
     public = "public"
@@ -14,5 +16,17 @@ class Chat(BaseModel):
     created_date: datetime
     type: ChatType
 
-    class Cinfig:
+    class Config:
+        orm_mode = True
+
+
+class ChatInDB(Chat):
+    id: int
+
+
+class LastMessages(BaseModel):
+    chat: ChatInDB
+    messages: list[MessageInDB]
+
+    class Config:
         orm_mode = True
